@@ -1,6 +1,5 @@
 To Do:
 - Hide credentials [CRITIC]
-- button function: write in database, delete after deadline is met
 - function to validate entry type
 - fix error message label
 
@@ -10,6 +9,8 @@ Done:
 - connect to mysql database 
 - add icon
 - show deadlines in a list
+- button function: write in database, delete after deadline is met
+- update treeview after new entry is added
 
 mesurements:
 - Title: 500x49

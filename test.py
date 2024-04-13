@@ -4,7 +4,6 @@ from tkinter import ttk
 from mysql.connector import connect
 
 mydb = connect(host="localhost", database="deadline", user="joyboy", password="joyboy")
-cursor = mydb.cursor()
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
@@ -17,29 +16,73 @@ root.title("deadline")
 root.wm_iconbitmap("icon.ico")
 
 
-def mysqlAction(action: int, text: str = None, date: str = None, tag: str = None):
-    "1- SELECT, 2- INSERT, 3-DELETE"
-    if action == 1:
-        return "SELECT * FROM deadlines;"
-    elif action == 2:
-        return f"INSERT INTO deadlines(EVENT, deadline, tags) VALUES('{text}', '{date}', '{tag}');"
-    else:
-        return ""
+# Select records from db
+def selectF():
+    cursor = mydb.cursor()
+    cursor.execute("SELECT * FROM deadlines ORDER BY deadline LIMIT 10;")
+    for event in cursor.fetchall():
+        print("done")  # delete
+        table.insert("", "end", value=(event[1], event[2], event[3]))
+        print("done 2")  # delete
+    cursor.close()
+
+
+# insert record to db
+def insertF(text: str, date: str, tag: str):
+    cursor = mydb.cursor()
+    cursor.execute(
+        f"INSERT INTO deadlines(EVENT, deadline, tags) VALUES('{text}', '{date}', '{tag}');"
+    )
+    mydb.commit()
+    print(cursor.rowcount, "Record inserted successfully into the table")
+    cursor.close()
+
+
+# delete record from db
+def deleteF(tag: str):
+    cursor = mydb.cursor()
+    cursor.execute(f"DELETE FROM deadlines WHERE tags={tag}")
+    cursor.commit()
+    cursor.close()
+
+
+# delete outdated records
+def verifyValidity():
+    cursor = mydb.cursor()
+    cursor.execute(
+        """
+        DELETE FROM deadlines WHERE deadline <= curdate();"""
+    )
+    cursor.commit()
+    cursor.close()
+
+
+# refresh table
+def refresh():
+    for i in table.get_children():
+        table.delete(i)
+    selectF()
 
 
 def addToDatabase():
+    # root.update()  # delete
     text = textEntry.get()
     deadline = deadlineEntry.get()
     tag = tagEntry.get()
-    cursor = mydb.cursor()
-    cursor.execute(mysqlAction(2, text, deadline, tag))
-    mydb.commit()
-    print(cursor.rowcount, "Record inserted successfully into Laptop table")
-    cursor.execute("SELECT * FROM deadlines LIMIT 10 ORDER BY deadline;")
-    for event in cursor.fetchall():
-        print("done")
-        table.insert("", "end", value=(event[1], event[2], event[3]))
-        print("done 2")
+    insertF(text, deadline, tag)
+    refresh()
+    # table.update()  # delete
+
+    # delete
+    # cursor = mydb.cursor()
+    # cursor.execute(mysqlAction(2, text, deadline, tag))
+    # mydb.commit()
+    # print(cursor.rowcount, "Record inserted successfully into Laptop table")
+    # cursor.execute(mysqlAction(1))
+    # for event in cursor.fetchall():
+    #     print("done")
+    #     table.insert("", "end", value=(event[1], event[2], event[3]))
+    #     print("done 2")
     # cursor.close()
 
 
@@ -88,19 +131,23 @@ submitButton.place(x=402, y=25, anchor=tk.CENTER)
 # Treeview ttk
 table = ttk.Treeview(tableFrame)
 s = ttk.Style(tableFrame)
+s.configure("table", rowheight=40)
 s.theme_use("clam")
 s.configure("Treeview", background="green", foreground="white", font=("Roboto", 12))
 table["columns"] = ("events", "deadline", "tag")
 table["show"] = "headings"
 
-table.column("events", width=325, minwidth=325, anchor=tk.CENTER)
-table.column("deadline", width=75, minwidth=75, anchor=tk.CENTER)
-table.column("tag", width=50, minwidth=50, anchor=tk.CENTER)
+table.column("events", width=285, minwidth=285, anchor=tk.CENTER)
+table.column("deadline", width=95, minwidth=95, anchor=tk.CENTER)
+table.column("tag", width=70, minwidth=70, anchor=tk.CENTER)
 
 table.heading("events", text="events", anchor=tk.CENTER)
 table.heading("deadline", text="deadline", anchor=tk.CENTER)
 table.heading("tag", text="tag", anchor=tk.CENTER)
 
 table.place(x=250, y=114, anchor=tk.CENTER)
+
+root.after_idle(verifyValidity)
+root.after_idle(selectF)
 
 root.mainloop()
