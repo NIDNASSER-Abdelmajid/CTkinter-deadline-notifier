@@ -2,8 +2,10 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import ttk
 from mysql.connector import connect
+import time
 
 mydb = connect(host="localhost", database="deadline", user="joyboy", password="joyboy")
+cursor = mydb.cursor()
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
@@ -18,43 +20,42 @@ root.wm_iconbitmap("icon.ico")
 
 # Select records from db
 def selectF():
-    cursor = mydb.cursor()
     cursor.execute("SELECT * FROM deadlines ORDER BY deadline LIMIT 10;")
     for event in cursor.fetchall():
-        print("done")  # delete
         table.insert("", "end", value=(event[1], event[2], event[3]))
-        print("done 2")  # delete
-    cursor.close()
+    # label.configure(text="10 RECORDS SELECTED!", text_color="green")
 
 
 # insert record to db
 def insertF(text: str, date: str, tag: str):
-    cursor = mydb.cursor()
     cursor.execute(
         f"INSERT INTO deadlines(EVENT, deadline, tags) VALUES('{text}', '{date}', '{tag}');"
     )
     mydb.commit()
-    print(cursor.rowcount, "Record inserted successfully into the table")
-    cursor.close()
+    print(cursor.rowcount, "Record inserted successfully into the table")  # delete
+    label.configure(
+        text=f'"{text}" RECORD INSERTED SUCCESSFULLY INTO THE TABLE.',
+        text_color="yellow",
+    )
 
 
 # delete record from db
-def deleteF(tag: str):
-    cursor = mydb.cursor()
-    cursor.execute(f"DELETE FROM deadlines WHERE tags={tag}")
-    cursor.commit()
-    cursor.close()
+def deleteF():
+    tag = tagDeleteEntry.get()
+    cursor.execute(f"DELETE FROM deadlines WHERE tags='{tag}'")
+    mydb.commit()
+    label.configure(text=f'"{tag}" RECORD IS DELETED.', text_color="red")
+    refresh()
+    print("deleted")  # delete
 
 
 # delete outdated records
 def verifyValidity():
-    cursor = mydb.cursor()
     cursor.execute(
         """
         DELETE FROM deadlines WHERE deadline <= curdate();"""
     )
-    cursor.commit()
-    cursor.close()
+    mydb.commit()
 
 
 # refresh table
@@ -66,24 +67,21 @@ def refresh():
 
 def addToDatabase():
     # root.update()  # delete
-    text = textEntry.get()
-    deadline = deadlineEntry.get()
     tag = tagEntry.get()
-    insertF(text, deadline, tag)
-    refresh()
-    # table.update()  # delete
+    if not uTag(tag):
+        text = textEntry.get()
+        deadline = deadlineEntry.get()
 
-    # delete
-    # cursor = mydb.cursor()
-    # cursor.execute(mysqlAction(2, text, deadline, tag))
-    # mydb.commit()
-    # print(cursor.rowcount, "Record inserted successfully into Laptop table")
-    # cursor.execute(mysqlAction(1))
-    # for event in cursor.fetchall():
-    #     print("done")
-    #     table.insert("", "end", value=(event[1], event[2], event[3]))
-    #     print("done 2")
-    # cursor.close()
+        insertF(text, deadline, tag)
+        refresh()
+    else:
+        print(f"the tag '{tag}' is already used!")
+
+
+def uTag(tag: str = None):
+    cursor.execute("SELECT tags FROM deadlines;")
+    tags = cursor.fetchall()
+    return tuple([tag]) in tags
 
 
 # frames
@@ -117,7 +115,7 @@ tagEntry = ctk.CTkEntry(
 )
 tagEntry.place(x=250, y=25, anchor=tk.CENTER)
 
-# Button
+# submit Button
 submitButton = ctk.CTkButton(
     threeboxFrame,
     width=146,
@@ -147,7 +145,28 @@ table.heading("tag", text="tag", anchor=tk.CENTER)
 
 table.place(x=250, y=114, anchor=tk.CENTER)
 
+# delete button
+deleteButton = ctk.CTkButton(
+    tableFrame,
+    width=146,
+    height=30,
+    text="delete",
+    fg_color="red",
+    command=deleteF,
+)
+deleteButton.place(x=402, y=250, anchor=tk.CENTER)
+
+# tag delete entry
+tagDeleteEntry = ctk.CTkEntry(tableFrame, width=146, height=30, placeholder_text="tag")
+tagDeleteEntry.place(x=250, y=250, anchor=tk.CENTER)
+
+# query label
+label = ctk.CTkLabel(tableFrame, text="", font=("Roboto", 15))
+label.place(relx=0.5, y=280, anchor=tk.CENTER)
+
+
 root.after_idle(verifyValidity)
 root.after_idle(selectF)
+# root.after_idle(uTag)
 
 root.mainloop()
